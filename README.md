@@ -85,3 +85,15 @@ To get started with MewNotes, follow these installation and usage instructions:
 
    ```bash
    git clone https://github.com/yourusername/mewnotes.git
+
+2. Navigate to the project directory 
+   ```bash
+   cd mewnotes
+3. Install project dependencies:
+   ```bash
+   npm install
+
+4. Start the application 
+   ```bash
+   npm start
+5. Access MewNotes in your web browser at [http://localhost:3000](http://localhost:3000).
