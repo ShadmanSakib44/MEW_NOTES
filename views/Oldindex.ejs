@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <style>
+        .hov:hover {
+            background-color: rgb(201, 193, 209);
+        }
+
+        .basicstyle {
+            cursor: pointer;
+        }
+
+        .logo {
+            border-radius: 64px;
+            height: 38px;
+        }
+
+        .libasic {
+            display: flex;
+            justify-content: space-between;
+            font-family: sans-serif;
+            font-size: 1.2rem;
+        }
+
+        .edit-button {
+            margin-right: 10px;
+        }
+
+        .note-input {
+            margin-right: 10px;
+        }
+
+        /* Added some styles for the note-taking interface */
+        .note-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <% if (userinfo && userinfo.googleId) { %>
+                    <!-- User logged in with Google -->
+                    <% if (userinfo.image) { %>
+                        <img class="logo" src="<%= userinfo.image %>" alt="">
+                    <% } %>
+                    &nbsp; <%= userinfo.firstName %>'s Notes
+                <% } else { %>
+                    <!-- User logged in with Local Strategy -->
+                    Welcome to Notes
+                <% } %>
+            </a>
+            
+            <a class="navbar-brand btn btn-danger btn-small" style="color: white;" href="/auth/logout">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <form action="/add/note" method="POST" enctype="multipart/form-data" class="d-flex flex-column">
+            <div class="note-container">
+                <input type="text" name="note" class="form-control mb-2 note-input" placeholder="Enter Note">
+                <input type="file" name="image" class="form-control mb-2" accept="image/*">
+                <input type="file" name="audio" class="form-control mb-2" accept="audio/*">
+                <input type="submit" value="Add" class="btn btn-md btn-primary">
+            </div>
+        </form>
+
+        <ul class="list-group mt-5" id="noteList">
+            <% note.forEach(note => { %>
+                <li class="list-group-item hov libasic" id="item-<%= note._id %>"
+                    <% if(note.done == 1) { %> style="background-color: #accec6; text-decoration: line-through;" <% } %>>
+                    <div class="note-container">
+                        <span id="text-<%= note._id %>"><%= note.note %></span>
+            
+                        <% if (note.imagePath) { %>
+                            <img src="<%= note.imagePath %>" alt="Note Image" style="max-width: 100px;">
+                        <% } %>
+                        <% if (note.audioPath) { %>
+                            <audio controls>
+                                <source src="<%= note.audioPath %>" type="audio/mpeg">
+                                Your browser does not support the audio tag.
+                            </audio>
+                        <% } %>
+                    </div>
+            
+                    <div class="note-actions">
+                        <button onclick="editNote('<%= note._id %>')" class="btn btn-primary btn-small edit-button">Edit</button>
+                        <button onclick="deleteNote('<%= note._id %>')" class="btn btn-danger btn-small">Delete</button>
+                    </div>
+                </li>
+            <% }) %>
+        </ul>
+    </div>
+
+    <script>
+        function editNote(id) {
+            var noteText = document.getElementById('text-' + id);
+            var currentText = noteText.innerText;
+
+            // Check if an input element already exists for this note and remove it
+            var existingInput = document.getElementById('input-' + id);
+            if (existingInput) {
+                existingInput.parentNode.removeChild(existingInput);
+            }
+
+            // Create and add a new input element
+            var inputElement = document.createElement('input');
+            inputElement.setAttribute('type', 'text');
+            inputElement.setAttribute('id', 'input-' + id);
+            inputElement.setAttribute('value', currentText);
+            inputElement.classList.add('note-input');
+            noteText.innerHTML = '';
+            noteText.appendChild(inputElement);
+
+            // Create and add a "Save" button
+            var saveButton = document.createElement('button');
+            saveButton.textContent = 'Save';
+            saveButton.classList.add('btn', 'btn-small', 'btn-success', 'edit-button');
+            saveButton.onclick = function() {
+                submitEdit(id);
+            };
+            noteText.appendChild(saveButton);
+        }
+
+        function submitEdit(id) {
+            var updatedText = document.getElementById('input-' + id).value;
+
+            fetch('/edit/note/' + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ note: updatedText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                document.getElementById('text-' + id).innerText = updatedText;
+                // Remove the input and save button after saving
+                var inputElement = document.getElementById('input-' + id);
+                var saveButton = document.querySelector('#text-' + id + ' .edit-button');
+                if (inputElement) {
+                    inputElement.remove();
+                }
+                if (saveButton) {
+                    saveButton.remove();
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        function deleteNote(id) {
+            fetch('/delete/note/' + id, { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    var item = document.getElementById('item-' + id);
+                    item.parentNode.removeChild(item);
+                } else {
+                    console.error('Failed to delete note:', data.error);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+
+    <!-- Existing scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW"
+        crossorigin="anonymous"></script>
+    <script src="ejs.min.js"></script>
+</body>
+</html>
